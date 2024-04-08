@@ -8,22 +8,14 @@ PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
 PROFILE = default
 PROJECT_NAME = hmf
-PYTHON_INTERPRETER = python3
-
-ifeq (,$(shell which conda))
-HAS_CONDA=False
-else
-HAS_CONDA=True
-endif
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
 ## Install Python Dependencies
-requirements: test_environment
-	$(PYTHON_INTERPRETER) -m pip install -U pip setuptools wheel
-	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
+requirements:
+	pip install -r requirements.txt
 
 ## Delete all compiled Python files
 clean:
@@ -40,6 +32,8 @@ create_environment:
 	pyenv virtualenv hmf-env
 	pyenv activate hmf-env
 
+start_api:
+	uvicorn src.api.main:app  --host 0.0.0.0 --port 80 --env-file .env
 
 #################################################################################
 # Self Documenting Commands                                                     #
