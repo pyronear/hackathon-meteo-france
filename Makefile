@@ -33,7 +33,7 @@ create_environment:
 	pyenv activate hmf-env
 
 start_api:
-	uvicorn src.api.main:app  --host 0.0.0.0 --port 80 --env-file .env
+	uvicorn src.api.main:app  --host 0.0.0.0 --port 8000
 
 #################################################################################
 # Self Documenting Commands                                                     #
