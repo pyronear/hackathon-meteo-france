@@ -1,6 +1,8 @@
 import json
 import os
 
+import ast
+
 import pandas as pd
 import pandas_geojson as pdg
 
@@ -35,4 +37,11 @@ def load_wildfires_data(input: WildfiresLoadInput):
         property_col_list=["confidence"],
     )
 
-    return geojson.to_dict()
+
+    # TODO: fix this properly, this is a hack to convert the string coordinates to a list
+    geojsonFire =  geojson.to_dict()
+
+    geojsonfire_features_fixed = [{**feature, "geometry": {**feature['geometry'], "coordinates": ast.literal_eval(feature['geometry']['coordinates'])}} for feature in geojsonFire['features']]
+    geojsonFire['features'] = geojsonfire_features_fixed
+
+    return geojsonFire
