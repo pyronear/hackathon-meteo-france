@@ -13,3 +13,6 @@ make requirements
 ```bash
 make start_api
 ```
+
+## Visualize the data
+Use [this visualizer](https://github.com/pyronear/hackathon-meteo-france-front) to visualize fire risk against fire instances.
