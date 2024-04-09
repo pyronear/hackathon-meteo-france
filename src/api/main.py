@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routers import fwi
+from src.api.routers import fwi, wildfires
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(fwi.router)
+app.include_router(wildfires.router)
 
 
 if __name__ == "__main__":
