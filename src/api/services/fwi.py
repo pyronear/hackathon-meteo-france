@@ -27,4 +27,25 @@ def load_fwi_data(input: FWILoadInput):
 
     with open(file_path, "r") as f:
         fwi_data = json.load(f)
+
+    def _fwi_category(fwi_pixel_val: int) -> int:
+        categories = [
+            (58, 6),
+            (145, 1),
+            (192, 5),
+            (210, 2),
+            (231, 4),
+        ]
+
+        for threshold, risk_value in categories:
+            if fwi_pixel_val <= threshold:
+                return risk_value
+
+        return 3
+
+    for el in fwi_data["features"]:
+        el["properties"]["fwi_category"] = _fwi_category(
+            el["properties"]["fwi_pixel_value"]
+        )
+
     return fwi_data
