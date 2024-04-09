@@ -1,90 +1,30 @@
 import json
-from io import BytesIO
-
-import geopandas as gpd
-import rasterio
-import requests
-from rasterio.features import shapes
+import os
 
 from src.api.schemas.fwi import FWILoadInput
+from src.shared.file_utils import get_project_data_folder_dir
+from src.shared.libs.s3 import S3Bucket
 
 __all__ = ["load_fwi_data"]
 
-BASE_URL = "https://ies-ows.jrc.ec.europa.eu/effis"
-
-DEFAULT_ARGS = {
-    "LAYERS": "mf010.fwi",
-    "FORMAT": "image/tiff",
-    "TRANSPARENT": "true",
-    "SINGLETILE": "false",
-    "SERVICE": "wms",
-    "VERSION": "1.1.1",
-    "REQUEST": "GetMap",
-    "STYLES": "",
-    "SRS": "EPSG:4326",
-    "BBOX": "-5.0,43.0,10.0,52.0",
-    "WIDTH": "1600",
-    "HEIGHT": "1200",
-    "TIME": "2021-07-01",
-}
-
 
 def load_fwi_data(input: FWILoadInput):
-    return gpd_to_json(process(get_fwi_image(input.date)))
+    year, month, day = input.date.split("-")
 
+    file_path = get_project_data_folder_dir() / "raw/test.json"
 
-def get_fwi_image(date):
-    args = DEFAULT_ARGS.copy()
-    args["TIME"] = date
-    url = BASE_URL + "?" + "&".join([f"{k}={v}" for k, v in args.items()])
-    response = requests.get(url, stream=True)
+    S3 = S3Bucket(
+        bucket_name="hackathon-meteo-france",
+        endpoint_url=os.getenv("S3_ENDPOINT_URL"),
+        region_name=os.getenv("AWS_REGION_NAME"),
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    )
+    S3.download_file(
+        object_key=f"fwi/year={year}/month={month}/day={day}/fwi_values.json",
+        file_path=file_path,
+    )
 
-    return response
-
-
-def process(response):
-    with rasterio.open(BytesIO(response.content)) as src:
-        image = src.read(1)  # first band
-        results = (
-            {"properties": {"fwi_pixel_value": v}, "geometry": s}
-            for i, (s, v) in enumerate(shapes(image, transform=src.meta["transform"]))
-        )
-
-        gpd_polygonized_raster = (
-            gpd.GeoDataFrame.from_features(list(results), crs=src.meta["crs"])
-            .query("fwi_pixel_value != 0")
-            .assign(fwi_category=lambda x: x["fwi_pixel_value"].apply(_fwi_category))
-        )
-
-    return gpd_polygonized_raster
-
-
-def _fwi_category(fwi_pixel_val: int) -> int:
-    categories = [
-        (58, 6),
-        (145, 1),
-        (192, 5),
-        (210, 2),
-        (231, 4),
-    ]
-
-    for threshold, risk_value in categories:
-        if fwi_pixel_val <= threshold:
-            return risk_value
-
-    return 3
-
-
-def gpd_to_json(geodataframe: gpd.GeoDataFrame):
-    json_fwi = geodataframe.to_json()
-    json_fwi = json.loads(json_fwi)
-    for feature_dict in json_fwi["features"]:
-        del feature_dict["id"]
-    return {
-        "type": "FeatureCollection",
-        "crs": {
-            "type": "name",
-            "properties": {"name": "urn:ogc:def:crs:OGC:1.3:CRS84"},
-        },
-        "features": json_fwi["features"],
-    }
+    with open(file_path, "r") as f:
+        fwi_data = json.load(f)
+    return fwi_data
